@@ -162,34 +162,6 @@ fn add_user_agent(mut builder: RequestBuilder) -> Result<RequestBuilder, SdkErro
     Ok(builder)
 }
 
-// Adds user agent to the request builder. Synchronous version.
-fn add_user_agent_blocking(
-    mut builder: reqwest::blocking::RequestBuilder,
-) -> Result<reqwest::blocking::RequestBuilder, SdkError> {
-    builder = builder.header("User-Agent", get_user_agent()?);
-
-    Ok(builder)
-}
-
-// Blocking version of add_auth, uses blocking request builder.
-fn add_auth_blocking(
-    mut builder: reqwest::blocking::RequestBuilder,
-    configuration: &Configuration,
-) -> reqwest::blocking::RequestBuilder {
-    if let Some(api_key) = &configuration.api_key() {
-        builder = builder.header("Authorization", get_api_key_authorization_value(api_key));
-    } else if let Some(basic_auth) = &configuration.basic_auth() {
-        builder = builder.basic_auth(
-            basic_auth.username.to_owned(),
-            basic_auth.password.to_owned(),
-        );
-    } else if let Some(token) = &configuration.bearer_access_token() {
-        builder = builder.bearer_auth(token);
-    };
-
-    builder
-}
-
 fn build_api_error(status: StatusCode, text: &str) -> SdkError {
     match serde_json::from_str(text) {
         Ok(details) => SdkError::ApiRequestError(ApiError { details, status }),
@@ -249,24 +221,6 @@ async fn send_multipart_request(
     builder = add_user_agent(builder)?;
 
     Ok(builder.multipart(form).send().await?)
-}
-
-fn send_blocking_valid_json_request<T: Validate + serde::Serialize>(
-    client: &reqwest::blocking::Client,
-    configuration: &Configuration,
-    request_body: T,
-    method: reqwest::Method,
-    path: &str,
-) -> Result<reqwest::blocking::Response, SdkError> {
-    request_body.validate()?;
-
-    let url = format!("{}{}", configuration.base_url(), path);
-    let mut builder = client.request(method, url);
-
-    builder = add_auth_blocking(builder, configuration);
-    builder = add_user_agent_blocking(builder)?;
-
-    Ok(builder.json(&request_body).send()?)
 }
 
 mod tests;

@@ -5,8 +5,7 @@ use std::collections::HashMap;
 use validator::Validate;
 
 use crate::api::{
-    build_api_error, send_blocking_valid_json_request, send_no_body_request,
-    send_valid_json_request, ApiError, SdkError, SdkResponse,
+    build_api_error, send_no_body_request, send_valid_json_request, SdkError, SdkResponse,
 };
 use crate::model::sms::{
     CreateTfaApplicationRequestBody, CreateTfaApplicationResponseBody,
@@ -1480,54 +1479,6 @@ impl SmsClient {
             })
         } else {
             Err(build_api_error(status, &text))
-        }
-    }
-}
-
-/// Blocking client for the Infobip SMS channel.
-pub struct BlockingSmsClient {
-    configuration: Configuration,
-    client: reqwest::blocking::Client,
-}
-
-impl BlockingSmsClient {
-    /// Builds and returns a new `BlockingSmsClient` with a specified configuration.
-    pub fn with_configuration(configuration: Configuration) -> BlockingSmsClient {
-        BlockingSmsClient {
-            configuration,
-            client: reqwest::blocking::Client::new(),
-        }
-    }
-
-    /// Check how different message configurations will affect your message text, number of
-    /// characters and message parts. This is the blocking version.
-    pub fn preview(
-        &self,
-        request_body: PreviewRequestBody,
-    ) -> Result<SdkResponse<PreviewResponseBody>, SdkError> {
-        let response = send_blocking_valid_json_request(
-            &self.client,
-            &self.configuration,
-            request_body,
-            reqwest::Method::POST,
-            PATH_PREVIEW,
-        )?;
-
-        let status = response.status();
-        let text = response.text()?;
-
-        if status.is_success() {
-            Ok(SdkResponse {
-                body: serde_json::from_str(&text)?,
-                status,
-            })
-        } else {
-            let api_error = ApiError {
-                details: serde_json::from_str(&text)?,
-                status,
-            };
-
-            Err(SdkError::ApiRequestError(api_error))
         }
     }
 }

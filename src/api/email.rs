@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 use std::io;
+use std::io::Read;
 
 use reqwest::multipart::Form;
 use reqwest::multipart::Part;
-use tokio::io::AsyncReadExt;
 use validator::Validate;
 
 use crate::api::{
@@ -39,12 +39,12 @@ pub const PATH_UPDATE_TRACKING: &str = "/email/1/domains/{domainName}/tracking";
 pub const PATH_VALIDATE: &str = "/email/2/validation";
 pub const PATH_VERIFY_DOMAIN: &str = "/email/1/domains/{domainName}/verify";
 
-async fn get_file_part(file_name: String) -> io::Result<Part> {
-    let mut file = tokio::fs::File::open(file_name.clone()).await?;
+fn get_file_part(file_name: String) -> io::Result<Part> {
+    let mut file = std::fs::File::open(file_name.clone())?;
     let mut buffer = Vec::new();
-    let count = file.read_to_end(&mut buffer).await?;
+    let _ = file.read_to_end(&mut buffer)?;
 
-    Ok(Part::stream_with_length(buffer, count as u64).file_name(file_name))
+    Ok(Part::stream(buffer).file_name(file_name))
 }
 
 async fn build_form(request_body: SendRequestBody) -> io::Result<Form> {
@@ -75,10 +75,10 @@ async fn build_form(request_body: SendRequestBody) -> io::Result<Form> {
         form = form.text("templateId", template_id.to_string());
     }
     if let Some(attachment) = request_body.attachment {
-        form = form.part("attachment", get_file_part(attachment).await?);
+        form = form.part("attachment", get_file_part(attachment)?);
     }
     if let Some(inline_image) = request_body.inline_image {
-        form = form.part("inlineImage", get_file_part(inline_image).await?);
+        form = form.part("inlineImage", get_file_part(inline_image)?);
     }
     if let Some(intermediate_report) = request_body.intermediate_report {
         form = form.text("intermediateReport", intermediate_report.to_string());
